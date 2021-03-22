@@ -13,6 +13,7 @@ import io.moquette.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import cn.wildfirechat.common.ErrorCode;
+
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -32,8 +33,11 @@ public class RPCCenter {
 
     public interface Callback {
         void onSuccess(byte[] response);
+
         void onError(ErrorCode errorCode);
+
         void onTimeout();
+
         Executor getResponseExecutor();
     }
 
@@ -46,7 +50,8 @@ public class RPCCenter {
         return instance;
     }
 
-    protected RPCCenter() {}
+    protected RPCCenter() {
+    }
 
     public void sendRequest(String fromUser, String clientId, String request, byte[] message, String target, TargetEntry.Type type, Callback callback, boolean isAdmin) {
         int requestId = 0;
@@ -54,7 +59,7 @@ public class RPCCenter {
         if (callback != null) {
             requestId = aiRequestId.incrementAndGet();
             if (requestId == Integer.MAX_VALUE) {
-                if(!aiRequestId.compareAndSet(Integer.MAX_VALUE, 1)) {
+                if (!aiRequestId.compareAndSet(Integer.MAX_VALUE, 1)) {
                     requestId = aiRequestId.incrementAndGet();
                 }
             }
@@ -66,23 +71,24 @@ public class RPCCenter {
 
     public void sendResponse(int errorCode, byte[] message, String toUuid, int requestId) {
         LOG.debug("send async reponse to {} with requestId {}", toUuid, requestId);
-        if (requestId > 0) {
-            RequestInfo info = requestMap.remove(requestId);
-            LOG.debug("receive async reponse requestId {}, errorCode {}", requestId, errorCode);
-            if(info != null) {
-                info.future.cancel(true);
-                if (info.callback != null) {
-                    info.callback.getResponseExecutor().execute(() -> {
-                        if (errorCode == 0 || errorCode == ErrorCode.ERROR_CODE_SUCCESS_GZIPED.getCode()) {
-                            info.callback.onSuccess(message);
-                        } else {
-                            info.callback.onError(ErrorCode.fromCode(errorCode));
-                        }
-                    });
-                } else {
-
-                }
-            }
+        if (requestId <= 0) {
+            return;
         }
+        RequestInfo info = requestMap.remove(requestId);
+        LOG.debug("receive async reponse requestId {}, errorCode {}", requestId, errorCode);
+        if (null == info) {
+            return;
+        }
+        info.future.cancel(true);
+        if (null == info.callback) {
+            return;
+        }
+        info.callback.getResponseExecutor().execute(() -> {
+            if (errorCode == 0 || errorCode == ErrorCode.ERROR_CODE_SUCCESS_GZIPED.getCode()) {
+                info.callback.onSuccess(message);
+            } else {
+                info.callback.onError(ErrorCode.fromCode(errorCode));
+            }
+        });
     }
 }
