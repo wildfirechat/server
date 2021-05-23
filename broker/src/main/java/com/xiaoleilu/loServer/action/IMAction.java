@@ -121,5 +121,10 @@ public class IMAction extends Action {
             response.setContent(contents);
         }
         response.send();
+
+        if ("close".equals(request.getHeader("Connection"))) {
+            ctx.flush();
+            ctx.close();
+        }
     }
 }

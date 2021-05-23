@@ -154,6 +154,7 @@ public class MemoryMessagesStore implements IMessagesStore {
     private String mChatroomMemberUpdateCallback;
     private boolean mGroupAllowClientCustomOperationNotification;
     private int mGroupVisibleQuitKickoffNotification;
+    private int mSyncDataPartSize = 0;
 
     private Set<Integer> mUserHideProperties = new HashSet<>();
 
@@ -377,6 +378,12 @@ public class MemoryMessagesStore implements IMessagesStore {
 
         try {
             mGroupVisibleQuitKickoffNotification = Integer.parseInt(server.getConfig().getProperty(GROUP_Visible_Quit_Kickoff_Notification, "0"));
+        } catch (Exception e) {
+
+        }
+
+        try {
+            mSyncDataPartSize = Integer.parseInt(server.getConfig().getProperty(SYNC_Data_Part_Size, "0"));
         } catch (Exception e) {
 
         }
@@ -2573,6 +2580,11 @@ public class MemoryMessagesStore implements IMessagesStore {
             }
         }
 
+        if(mSyncDataPartSize > 0 && out.size() > mSyncDataPartSize) {
+            out.sort(Comparator.comparingLong(FriendData::getTimestamp));
+            out = out.subList(0, mSyncDataPartSize);
+        }
+
         return out;
     }
 
@@ -2618,6 +2630,10 @@ public class MemoryMessagesStore implements IMessagesStore {
             }
         }
 
+        if(mSyncDataPartSize > 0 && out.size() > mSyncDataPartSize) {
+            out.sort(Comparator.comparingLong(WFCMessage.FriendRequest::getUpdateDt));
+            out = out.subList(0, mSyncDataPartSize);
+        }
         return out;
     }
 
@@ -3111,6 +3127,12 @@ public class MemoryMessagesStore implements IMessagesStore {
             }
         }
 
+        if(mSyncDataPartSize > 0 && ec == ErrorCode.ERROR_CODE_SUCCESS && builder.getEntryCount() > mSyncDataPartSize) {
+            List<WFCMessage.UserSettingEntry> list = new ArrayList<>(builder.getEntryList());
+            list.sort(Comparator.comparingLong(WFCMessage.UserSettingEntry::getUpdateDt));
+            list = list.subList(0, mSyncDataPartSize);
+            builder.clearEntry().addAllEntry(list);
+        }
         return ec;
     }
 

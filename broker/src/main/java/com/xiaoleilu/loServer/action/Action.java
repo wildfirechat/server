@@ -39,6 +39,7 @@ abstract public class Action {
 
     public ChannelHandlerContext ctx;
     public Response response;
+    public Request request;
 
     protected class Result {
         Object data;

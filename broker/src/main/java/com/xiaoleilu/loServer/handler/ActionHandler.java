@@ -135,6 +135,7 @@ abstract public class ActionHandler extends SimpleChannelInboundHandler<FullHttp
 		}
         action.ctx = ctx;
 		action.response = response;
+		action.request = request;
 
 		boolean isSync = action.doAction(request);
 
@@ -142,6 +143,10 @@ abstract public class ActionHandler extends SimpleChannelInboundHandler<FullHttp
             //如果发送请求未被触发，则触发之，否则跳过。
             if(!response.isSent()){
                 response.send();
+                if ("close".equals(request.getHeader("Connection"))) {
+                    ctx.flush();
+                    ctx.close();
+                }
             }
         }
 	}
